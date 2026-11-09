@@ -1,0 +1,98 @@
+<mxfile host="app.diagrams.net" modified="2026-11-09T21:00:00.000Z" agent="ZCode" version="24.0.0">
+  <diagram id="net-gateway-arch" name="联网专项架构">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1050" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="车载数据网关 · 联网专项架构（TCP 上传 + 本地队列 + 服务端幂等去重）" style="text;html=1;fontSize=16;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="10" width="850" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="zoneA" value="板端 ATK-IMX6U（Linux 应用层）" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#10739E;fontColor=#10739E;verticalAlign=top;align=left;spacingLeft=10;fillColor=#E6F4FA;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="380" height="440" as="geometry" />
+        </mxCell>
+
+        <mxCell id="zoneB" value="TCP 9000（行 JSON）" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#B09500;fontColor=#B09500;fillColor=#FFF8D6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="460" y="180" width="150" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="zoneC" value="服务端 VM Ubuntu（srv.py）" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#1F7A33;fontColor=#1F7A33;verticalAlign=top;align=left;spacingLeft=10;fillColor=#E8F5E9;" vertex="1" parent="1">
+          <mxGeometry x="650" y="60" width="360" height="440" as="geometry" />
+        </mxCell>
+
+        <mxCell id="evid" value="event_id 发生器&#10;dev01-&lt;boot_ts&gt;-&lt;seq&gt;&#10;（boot_ts 落盘单调递增）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="240" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tu" value="thread_upload 主循环&#10;①取数(锁下快照) ②造id ③拼JSON&#10;④入队 ⑤锁外发送 ⑥收OK校验" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="queue" value="upload_queue（SQLite）&#10;status: 0=待发 1=已发&#10;断网期队列 1 条/秒增长" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="recon" value="try_connect_once&#10;退避 1s→2s→4s 封顶&#10;每轮最多试一次（不阻塞采集）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;" vertex="1" parent="1">
+          <mxGeometry x="60" y="430" width="240" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="accept" value="accept → 按行收 JSON" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="670" y="100" width="320" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="insert" value="INSERT OR IGNORE&#10;（event_id 主键幂等，重复也回 OK）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="670" y="180" width="320" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db" value="server.db / events 表&#10;event_id PRIMARY KEY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;" vertex="1" parent="1">
+          <mxGeometry x="670" y="280" width="320" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ok" value="回 &quot;OK &lt;event_id&gt;&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="670" y="400" width="320" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="①入队 status=0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="tu" target="queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e2" value="②取一批(≤50,锁内拷贝)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;dashed=1;" edge="1" parent="1" source="queue" target="tu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" value="⑤一行 JSON（断网期不发送）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="tu" target="zoneB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e4" value="⑥ OK &lt;event_id&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="zoneB" target="tu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e5" value="发送失败 → 进重连" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="tu" target="recon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e6" value="重连成功后继续补传" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;dashed=1;" edge="1" parent="1" source="recon" target="zoneB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e7" value="七字节 JSON 行" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="zoneB" target="accept">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e8" value="写入" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="insert" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e9" value="入库成功" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;" edge="1" parent="1" source="db" target="ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="图例：蓝=板端逻辑　红=本地队列（持久化）　橙=重连　绿=服务端处理　黄=网络通道&#10;关键不变量：至少一次投递 + 服务端 event_id 幂等 = 不丢不重；锁内只做微秒级 DB 操作，网络 IO 全在锁外" style="text;html=1;fontSize=11;align=left;verticalAlign=top;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="970" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
